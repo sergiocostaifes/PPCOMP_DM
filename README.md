@@ -37,19 +37,14 @@ Este repositório NÃO contém:
 - Informações sensíveis
 - Infraestrutura real
 
-O dataset é utilizado apenas como proxy experimental para validação metodológica.
+O dataset é utilizado como proxy experimental para validação metodológica da arquitetura proposta.
 
 ---
 
 # Pipeline Metodológico
 
-O projeto é estruturado em notebooks modulares.
-
-
-# Pipeline Metodológico
-
 O projeto é estruturado em notebooks modulares e encadeados.
-A granularidade temporal oficial adotada é de 5 minutos.
+A granularidade temporal oficial adotada é de 5 minutos.          
 
 ## 00_env_paths.ipynb
 Bootstrap do ambiente:
@@ -87,10 +82,10 @@ Saída:
 Objetivo: construção da base temporal agregada.
 - Criação de minute_bucket (5 min = 300s)
 - Agregações por janela:
-- events_total
-- failures_total
-- fail_rate
-- métricas opcionais (machines, jobs)
+  - events_total
+  - failures_total
+  - fail_rate
+  - métricas opcionais (machines, jobs)
 - Construção de série contínua (reindex)
 
 Saídas:
@@ -139,9 +134,9 @@ Saída:
 Objetivo: definição do ground truth supervisionado.
 - Uso da tabela de episódios
 - Rotulagem temporal:
--- BEFORE
--- DURING
--- AFTER
+  - BEFORE
+  - DURING
+  - AFTER
 - Validação de consistência
 
 Saída:
@@ -156,12 +151,12 @@ Objetivo: baseline supervisionado.
 - Split temporal (train/test)
 - Treinamento Random Forest
 - Avaliação:
--- Accuracy
--- Precision
--- Recall
--- F1-score
--- Matriz de confusão
--- Salvamento do modelo
+  - Accuracy
+  - Precision
+  - Recall
+  - F1-score
+  - Matriz de confusão
+- Salvamento do modelo
 
 Saídas:
 - `rf_baseline.joblib`
@@ -211,4 +206,4 @@ Este repositório é público e contém exclusivamente:
 - Dataset público
 - Resultados experimentais
   
-Não representa arquitetura real.
+Não representa arquitetura real de nenhuma instituição financeira.
