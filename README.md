@@ -1,162 +1,177 @@
 # PPCOMP_DM
-Dissertação de Mestrado - Sérgio Henrique Cerqueira Costa
-
-# Otimização de PRD com Machine Learning
-## Estudo de Caso – Banestes (PPCOMP/IFES)
-
-Autor: Sérgio Henrique Cerqueira Costa  
-Programa: Mestrado em Computação Aplicada – IFES  
-Linha: Inteligência Artificial aplicada à Continuidade de Negócios  
+Dissertação de Mestrado – Sérgio Henrique Cerqueira Costa  
+Programa de Pós-Graduação em Computação Aplicada (PPCOMP) – IFES  
 
 ---
 
-## 🎯 Objetivo do Projeto
+# Otimização de Planos de Recuperação de Desastres (PRD) com Machine Learning
+
+## Objetivo
 
 Desenvolver e validar um protótipo baseado em Machine Learning para:
 
-1. Classificação automática de estados de execução do PRD (BEFORE / DURING / AFTER)
-2. Priorização de manobras corretivas utilizando Learning to Rank (LambdaMART)
+- Detecção e classificação automática de estados operacionais em ambientes distribuídos
+- Identificação de episódios críticos (eventos anômalos)
+- Classificação supervisionada de estados BEFORE / DURING / AFTER
 
-A arquitetura segue abordagem Design Science Research (DSR).
-
----
-
-# 🧭 Pipeline Metodológico
-
-O projeto é estruturado em notebooks modulares, cada um produzindo artefatos versionáveis e datasets intermediários em formato Parquet.
+A pesquisa segue abordagem **Design Science Research (DSR)**.
 
 ---
 
-## 🔹 00_env_paths.ipynb
-Configuração de ambiente:
-- Montagem do Google Drive
-- Definição de caminhos
-- Seed global
-- Verificação de versões
+# Dataset Utilizado
+
+Este repositório utiliza exclusivamente o dataset público:
+
+**Google Cluster Trace (Borg Traces)**
+
+Objetivo do uso:
+
+- Simular ambiente distribuído de grande escala
+- Modelar falhas e carga
+- Construir séries temporais agregadas
+- Detectar episódios críticos
+
+Este repositório NÃO contém:
+- Dados reais externos ao dataset público
+- Logs institucionais
+- Informações sensíveis
+- Infraestrutura real
+
+O dataset é utilizado apenas como proxy experimental para validação metodológica.
 
 ---
 
-## 🔹 01_ingest_validate.ipynb
-Ingestão e validação do dataset bruto:
-Entrada:
-- `01-raw/borg_traces_data.csv`
+# Pipeline Metodológico
+
+O projeto é estruturado em notebooks modulares.
+
+
+# Pipeline Metodológico
+
+O projeto é estruturado em notebooks modulares e encadeados.
+A granularidade temporal oficial adotada é de 5 minutos.
+
+## 00_env_paths.ipynb
+Bootstrap do ambiente:
+- Montagem automática do Google Drive
+- Clone / atualização automática do repositório
+- Definição de caminhos padrão
+- Configuração de seed global
+
+## 01_ingest_validate.ipynb
+Objetivo: ingestão e validação inicial.
+- Leitura do dataset bruto
+- Validação de schema
+- Tratamento de sentinelas temporais
+- Estatísticas exploratórias iniciais
 
 Saída:
-- `02-processed/trace_raw_validated.parquet` (opcional)
-
-Inclui:
-- Checagem de schema
-- Tipos
-- Estatísticas básicas
-- Verificação de consistência
+- `trace_raw_validated.parquet`
 
 ---
 
-## 🔹 02_clean_normalize.ipynb
-Limpeza e normalização:
-Entrada:
-- CSV bruto ou parquet validado
+## 02_clean_normalize.ipynb
+Objetivo: limpeza e normalização temporal.
+- Conversão de time para numérico
+- Remoção de valores inválidos
+- Criação de t_rel_us
+- Remoção de artefatos temporais
+- Persistência em formato Parquet
 
 Saída:
-- `02-processed/google_trace_clean.parquet`
-
-Inclui:
-- Remoção da Hora 0
-- Conversão de tipos
-- Criação de colunas auxiliares
-- Remoção de duplicatas
-
----
-
-## 🔹 03_windowing_episodes.ipynb
-Janelamento temporal e detecção de episódios:
-Entrada:
 - `google_trace_clean.parquet`
 
-Saídas:
-- `03-features/window_5min_base.parquet`
-- `03-features/episodes_detected.parquet`
-
-Inclui:
-- Agregações por janela
-- Identificação de eventos críticos
-
 ---
 
-## 🔹 04_feature_engineering.ipynb
-Engenharia de atributos:
-Entrada:
+## 03_window_5min_base.ipynb
+Objetivo: construção da base temporal agregada.
+- Criação de minute_bucket (5 min = 300s)
+- Agregações por janela:
+- events_total
+- failures_total
+- fail_rate
+- métricas opcionais (machines, jobs)
+- Construção de série contínua (reindex)
+
+Saídas:
 - `window_5min_base.parquet`
+- `window_5min_series.parquet`
+
+Este notebook estabelece a granularidade oficial do modelo.
+
+---
+
+## 04_window_5min_episodes.ipynb
+Objetivo: detecção automática de episódios críticos.
+- Aplicação de limiar estatístico (μ + 2σ)
+- Identificação de intervalos contínuos
+- Consolidação de episódios
+
+Cálculo de métricas por episódio:
+- duração
+- intensidade máxima
+- média
+- total de falhas
 
 Saída:
-- `03-features/window_5min_features.parquet`
+- `episodes_detected.parquet`
 
+Este notebook define a base objetiva para rotulagem supervisionada.
+
+---
+
+## 05_feature_engineering.ipynb
+Objetivo: construção de atributos derivados para ML.
 Inclui:
-- Métricas de carga
-- Taxas de falha
-- Entropia/dispersão
-- Atrasos e indicadores robustos
-
----
-
-## 🔹 05_labeling_states.ipynb
-Rotulagem supervisionada:
-Entrada:
-- Features
-- Episódios detectados
+- Rolling mean (k janelas)
+- Rolling std
+- Indicadores de tendência
+- Indicadores de aceleração de falhas
+- Métricas robustas (p95, p99)
+- Entropia / dispersão (se aplicável)
 
 Saída:
-- `04-labeled/window_5min_labeled.parquet`
-
-Rótulos:
-- BEFORE
-- DURING
-- AFTER
+- `window_5min_features.parquet`
 
 ---
 
-## 🔹 06_baseline_rf.ipynb
-Classificação com Random Forest:
-Entrada:
-- Dataset rotulado
+## 06_labeling_states.ipynb
+Objetivo: definição do ground truth supervisionado.
+- Uso da tabela de episódios
+- Rotulagem temporal:
+-- BEFORE
+-- DURING
+-- AFTER
+- Validação de consistência
+
+Saída:
+- `window_5min_labeled.parquet`
+
+Este notebook formaliza o problema de classificação.
+
+---
+
+## 07_baseline_rf.ipynb
+Objetivo: baseline supervisionado.
+- Split temporal (train/test)
+- Treinamento Random Forest
+- Avaliação:
+-- Accuracy
+-- Precision
+-- Recall
+-- F1-score
+-- Matriz de confusão
+-- Salvamento do modelo
 
 Saídas:
-- `models/rf_baseline.joblib`
-- `reports/rf_metrics.json`
-
-Métricas:
-- Acurácia
-- Precisão
-- Revocação
-- F1-score
-- Matriz de confusão
+- `rf_baseline.joblib`
+- `rf_metrics.json`
 
 ---
 
-## 🔹 07_error_analysis_iterate.ipynb
-Análise de erros e refinamento.
 
----
-
-## 🔹 08_ltr_dataset_build.ipynb
-Construção do dataset para ranking:
-Saída:
-- `05-ltr/ltr_train.parquet`
-- `05-ltr/ltr_valid.parquet`
-
----
-
-## 🔹 09_lambdamart.ipynb
-Treinamento do modelo de Learning to Rank:
-Saída:
-- Modelo LambdaMART
-- Métricas NDCG e MAP
-
----
-
-# 📂 Estrutura de Diretórios
-
-mestrado-prd-ml/
+# Estrutura do Repositório
+PPCOMP_DM/
 │
 ├── notebooks/
 ├── src/
@@ -169,34 +184,31 @@ mestrado-prd-ml/
 
 ---
 
-# 💾 Estratégia de Dados
+# Estratégia de Dados
 
-- Dados brutos armazenados no Google Drive.
-- Datasets intermediários em formato Parquet com compressão Snappy.
-- Git versiona apenas código e metadados.
-- Dados NÃO são versionados no repositório.
+- Dados brutos armazenados no Google Drive
+- Intermediários em formato Parquet (Snappy)
+- Git versiona apenas código
+- Datasets NÃO são versionados
 
 ---
 
-# 🧪 Reprodutibilidade
+# Reprodutibilidade
 
-- Seed global fixa
+- Bootstrap automático do repositório
+- Controle de versão via Git
 - Pipeline incremental
-- Notebooks modulares
-- Validação cruzada estratificada
+- Seed fixa
+- Ambiente principal: Google Colab
 
 ---
 
-# 🚀 Ambiente de Execução
+# Observação Importante
 
-Principal:
-- Google Colab
+Este repositório é público e contém exclusivamente:
 
-Alternativa:
-- Execução local via ambiente Python 3.10+
-
----
-
-# 🔐 Observações
-
-Dados reais do Banestes são anonimizados e não fazem parte deste repositório público.
+- Código acadêmico
+- Dataset público
+- Resultados experimentais
+  
+Não representa arquitetura real.
